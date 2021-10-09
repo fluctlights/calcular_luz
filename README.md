@@ -1,2 +1,3 @@
-# calcular_luz
-Precio de la luz por horas mediante la API ESIOS de Red Elétrica Española
+# calcular_luz.py
+
+En estos momentos, todavia esta en desarrollo esta herramienta
