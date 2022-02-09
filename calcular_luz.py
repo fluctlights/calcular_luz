@@ -3,16 +3,35 @@ import json
 import statistics
 
 #Creando el objeto JSON (cabeceras), que requiere un token personal y la URL que referencia la tarifa
-TOKEN = "" #Introducir el token personal que te da REE
-url = 'https://esios.ree.es/indicators?=Precio' #pagina que referencia a la PVPC 2.0A 
-headers = {'Accept':'application/json; application/vnd.esios-api-v1+json','Content-Type':'application/json','Host':'api.esios.ree.es','Authorization':'Token token=' + TOKEN, 'Cookie':''}
-
+TOKEN = "b8cdeb86a9e01c367f4a2fcf5b76580088eab4677ce4cee21d0523489d896b4a" #Introducir el token personal que te da REE
+url = 'https://esios.ree.es/indicators/10229' #pagina que referencia a la PVPC 2.0A 
+headers = {'Accept':'application/json; application/vnd.esios-api-v2+json','Content-Type':'application/json','Host':'api.esios.ree.es','Authorization':'Token token=' + TOKEN}
 #Obtener respuesta de la API tras meter la cabecera. y la URL que tiene la tarifa
 response = requests.get(url, headers=headers)
 
 #Si la respuesta es valida, continuamos
 if response.status_code == 200:
-    print(response.json())
+
+    json_data = json.loads(response.text)
+    valores = json_data['indicator']['values']
+    #print(response.json())
+
+    precios = [x['value'] for x in valores]
+    
+    hora = 0
+    for precio in precios:
+        print("%s horas - %s €" %(str(hora).zfill(2), str(round(precio/1000, 4))))
+        hora += 1
+    
+    valor_min = min(precios)
+    valor_max = max(precios)
+    valor_med = round(statistics.mean(precios),2)
+    
+    print("Precio mínimo: %s" % str(valor_min/1000))
+    print("Precio máximo: %s" % str(valor_max/1000))
+    print("Precio medio: %s" % str(valor_med/1000))
+
+    '''
     json_data = json.loads(response.text) #decodificamos la respuesta de la API
     valores = json_data['indicator']['values'] #Formateamos la array de arriba, donde tenemos [ID, valor]
     precios = [x['value'] for x in valores] #crear array de 24 filas, cada hora, un precio.
@@ -82,20 +101,4 @@ if response.status_code == 200:
 
     ruta = "/var/spool/cron/crontabs"
 
-
-
-
-        
-
-
-
-
-                
-
-
-    
-
-           
-
-    
-            
+    '''
