@@ -8,7 +8,7 @@ import requests
 import json
 import statistics
 
-# ------------------ Variables globales -------------------- #
+# ------------------ Variables globales ------------------- #
 
 TOKEN = "b8cdeb86a9e01c367f4a2fcf5b76580088eab4677ce4cee21d0523489d896b4a" #Token de acceso
 ID_PENINSULA = 8741 #Para filtrar por los precios de la Peninusula
