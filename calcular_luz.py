@@ -8,10 +8,14 @@ import requests
 import json
 import statistics
 
+# ------------------ Variables globales -------------------- #
+
 TOKEN = "b8cdeb86a9e01c367f4a2fcf5b76580088eab4677ce4cee21d0523489d896b4a" #Token de acceso
 ID_PENINSULA = 8741 #Para filtrar por los precios de la Peninusula
 URL = 'https://api.esios.ree.es/indicators/1001'
-CABECERAS = {'Accept':'application/json; application/vnd.esios-api-v2+json','Content-Type':'application/json','Host':'api.esios.ree.es','Authorization':'Token token=\"TOKEN\"'}
+CABECERAS = {'Accept':'application/json; application/vnd.esios-api-v2+json','Content-Type':'application/json','Host':'api.esios.ree.es','Authorization':'Token token=\"'+TOKEN+'\"'}
+
+# ------------------------ Metodos -------------------------- #
 
 def calcular_luz(datos_json):
     
@@ -81,7 +85,7 @@ def ejecutar_comandos(horario):
             comando = 'echo \"sh apagar.sh\" | at ' + i + ':00'
             call(comando, shell=True)
 
-# ------------------- Main ------------------ #
+# -------------------------- Main ------------------------ #
 
 datos_json = obtener_precios()
 
