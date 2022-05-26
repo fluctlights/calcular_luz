@@ -2,32 +2,23 @@
 # -*- coding: utf-8 -*-
 
 import sys
-#from webbrowser import get
 from subprocess import call
+from datetime import datetime
 import requests
 import json
 import statistics
 
-# ------------------ Variables globales ------------------- #
+# ------------------ Variables globales --------------------- #
 
-TOKEN = "b8cdeb86a9e01c367f4a2fcf5b76580088eab4677ce4cee21d0523489d896b4a" #Token de acceso
+TOKEN = "" #Token de acceso
 ID_PENINSULA = 8741 #Para filtrar por los precios de la Peninusula
 URL = 'https://api.esios.ree.es/indicators/1001'
-CABECERAS = {'Accept':'application/json; application/vnd.esios-api-v2+json','Content-Type':'application/json','Host':'api.esios.ree.es','Authorization':'Token token=\"'+TOKEN+'\"'}
+CABECERAS = {'Accept':'application/json; application/vnd.esios-api-v2+json','Content-Type':'application/json','Host':'api.esios.ree.es','Authorization':'Token token=\"' + TOKEN + '\"'}
+DIRECTORIO_LOGS = '' #ruta de guardado de logs con los precios max/min/med del dia
 
 # ------------------------ Metodos -------------------------- #
 
-def calcular_luz(datos_json):
-    
-        #Para filtrar por valores, y solo aquellos que sean de la Peninsula
-        valores = datos_json['indicator']['values']
-        valores_peninsula = [x for x in valores if x['geo_id'] == ID_PENINSULA]
-
-        #Recogiendo precios
-        precios = [x['value'] for x in valores_peninsula]
-        return precios
-
-def obtener_precios(): #cada dia, este hilo se activara para leer los valores nuevos
+def obtener_datos():
 
     response = requests.get(URL, headers=CABECERAS)
 
@@ -35,35 +26,46 @@ def obtener_precios(): #cada dia, este hilo se activara para leer los valores nu
         datos_json = json.loads(response.text) #almacenamos respuesta en formato JSON
         return datos_json
     
-    else: return datos_json
+    return datos_json #si tenemos error salimos directamente
 
-def precios_float(precios):
 
-    #transformando a array de valores numericos
-    valores_numericos = []
-    i = 0
-
-    for x in precios:
-        valores_numericos.append(float(x))
-        i = i+1
-
-    return valores_numericos
-
-def asignar_horarios(valores_numericos):
+def calcular_precios(datos_json):
     
-    desv_tipica = round(statistics.stdev(valores_numericos),3)
-    i = 0
+        #Para filtrar por valores, y solo aquellos que sean de la Peninsula
+        valores = datos_json['indicator']['values']
+        valores_peninsula = [x for x in valores if x['geo_id'] == ID_PENINSULA]
+
+        #Recogiendo precios
+        precios = [x['value'] for x in valores_peninsula]
+
+        #Convirtiendo a precios en kWh
+        i = 0
+        for x in precios:
+            precios[i] = round(float(precios[i])*0.001, 4) #para que de precios en kWh
+            i = i+1
+
+        #Guardando los precios (minimo, maximo, media) en un logfile
+        registro = 'echo \"' + '{\"Date: \"' + str(datetime.today().strftime('%d-%m-%Y')) + ', \"Maximo\": ' + str(max(precios)) + ', \"Minimo\": ' + str(min(precios)) + ', \"Media\": ' + str(round(statistics.mean(precios), 4)) + '}\"' + ' >> ' + DIRECTORIO_LOGS + '/precios.txt'
+        call(registro, shell=True)
+
+        return precios
+
+
+def asignar_horarios(precios):
+    
+    desv_tipica = round(statistics.stdev(precios), 4)
     horario = []
 
-    for x in valores_numericos:
+    for x in precios:
         if x <= desv_tipica:
             horario.append(True)
+        
         else: horario.append(False)
-        i = i+1
     
-    return horario
+    # Mantener servidor encendido si previamente estaba encendido 
+    # y a la hora siguiente se encenderá también, limitando desgaste
+    # de los componentes
 
-def arreglar_horarios(horario):
     i = 1
     for x in range(1, len(horario)-2):
         if x == 0:
@@ -73,34 +75,34 @@ def arreglar_horarios(horario):
     return horario
 
 
-def ejecutar_comandos(horario):
+def crear_tareas(horario):
+    
     i = 0
-    comando = ''
     for x in horario:
         if x:
-            comando = 'echo \"sh encender.sh\" | at ' + str(i) + ':00'
+            comando = 'echo \"sh encender.sh\" | at ' + str(i) + ':00 >/dev/null 2>&1 &'
             call(comando, shell=True)
         
         else:
-            comando = 'echo \"sh apagar.sh\" | at ' + str(i) + ':00'
+            comando = 'echo \"sh apagar.sh\" | at ' + str(i) + ':00 >/dev/null 2>&1 &'
             call(comando, shell=True)
+        
+        i = i+1 #siguiente hora
 
-# -------------------------- Main ------------------------ #
 
-datos_json = obtener_precios()
+def main():
 
-if len(datos_json) == 0: #error al procesar la peticion, json no valido (vacio)
-    sys.exit(-1) 
-    
-precios = calcular_luz(datos_json)
-valores_numericos = precios_float(precios)
+    datos_json = obtener_datos() #conectando con api
 
-#obteniendo minimo, maximo y media
-precio_minimo = min(valores_numericos)
-precio_maximo = max(valores_numericos)
-precio_medio = round(statistics.mean(valores_numericos),3)
+    if len(datos_json) == 0: #error al procesar la peticion, json no valido (vacio)
+        sys.exit(-1) 
+        
+    precios = calcular_precios(datos_json) #filtrado de precios y valores en kWh
+    horario = asignar_horarios(precios) #segun el precio de cada hora, encender/apagar servidor
+    crear_tareas(horario) #creacion de tareas de encendido/apagado para cada hora
+    return 0
 
-horario = asignar_horarios(valores_numericos)
-horario = arreglar_horarios(horario)
 
-ejecutar_comandos(horario)
+# ------------------- Codigo ejecutado ------------------ #
+
+main()
