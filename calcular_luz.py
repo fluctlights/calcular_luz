@@ -27,7 +27,7 @@ def calcular_luz(datos_json):
         precios = [x['value'] for x in valores_peninsula]
         return precios
 
-def obtener_precios(datos_json, valor): #cada dia, este hilo se activara para leer los valores nuevos
+def obtener_precios(): #cada dia, este hilo se activara para leer los valores nuevos
 
     response = requests.get(URL, headers=CABECERAS)
 
@@ -44,7 +44,7 @@ def precios_float(precios):
     i = 0
 
     for x in precios:
-        valores_numericos[i] = float(x)
+        valores_numericos.append(float(x))
         i = i+1
 
     return valores_numericos
@@ -57,15 +57,15 @@ def asignar_horarios(valores_numericos):
 
     for x in valores_numericos:
         if x <= desv_tipica:
-            horario[i] = True
-        else: horario[i] = False
+            horario.append(True)
+        else: horario.append(False)
         i = i+1
     
     return horario
 
 def arreglar_horarios(horario):
     i = 1
-    for x in range(1, horario-2):
+    for x in range(1, len(horario)-2):
         if x == 0:
             if horario[i-1] == 1 and horario[i+1] == 1:
                 horario[i] = 1
@@ -78,11 +78,11 @@ def ejecutar_comandos(horario):
     comando = ''
     for x in horario:
         if x:
-            comando = 'echo \"sh encender.sh\" | at ' + i + ':00'
+            comando = 'echo \"sh encender.sh\" | at ' + str(i) + ':00'
             call(comando, shell=True)
         
         else:
-            comando = 'echo \"sh apagar.sh\" | at ' + i + ':00'
+            comando = 'echo \"sh apagar.sh\" | at ' + str(i) + ':00'
             call(comando, shell=True)
 
 # -------------------------- Main ------------------------ #
@@ -100,7 +100,7 @@ precio_minimo = min(valores_numericos)
 precio_maximo = max(valores_numericos)
 precio_medio = round(statistics.mean(valores_numericos),3)
 
-horario = asignar_horarios(valores_numericos, precio_medio)
+horario = asignar_horarios(valores_numericos)
 horario = arreglar_horarios(horario)
 
 ejecutar_comandos(horario)
